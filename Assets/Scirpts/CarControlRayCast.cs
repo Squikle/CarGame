@@ -27,7 +27,8 @@ public class CarControlRayCast : MonoBehaviour
     public float acceleration = 30f;
     public float backAcceleration = 20f;
     public float steering = 80f;
-    public float gravity = 10f;
+    public float airGravity = 16.5f;
+    public float gravity = 3f;
     public float suspensionForce = 1f;
     public Transform centerOfMass;
     public Transform dynamicCenterOfMass;
@@ -194,13 +195,14 @@ public class CarControlRayCast : MonoBehaviour
                     GameObject groundingEffect = Instantiate(jumpEffect.gameObject, transform.position, Quaternion.Euler(90, 0, 0));
                     Destroy(groundingEffect, 1f);
                 }
+                rb.AddForceAtPosition(gravity * Vector3.down, transform.position, ForceMode.Acceleration);
+
                 grounded = true;
                 flipped = false;
             }
             else
             {
-               //rb.AddForceAtPosition(Vector3.down * gravity, centerOfMass.position, ForceMode.Acceleration);
-               rb.AddForceAtPosition(gravity*Vector3.down, centerOfMass.position, ForceMode.Acceleration);
+               rb.AddForceAtPosition(airGravity * Vector3.down, centerOfMass.position, ForceMode.Acceleration);
                grounded = false;
             }
         }

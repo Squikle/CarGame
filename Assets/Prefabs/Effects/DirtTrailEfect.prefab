@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 4423412234313276643}
   - component: {fileID: 4423412234313276640}
   m_Layer: 0
-  m_Name: RightFrontDustTrail
+  m_Name: DirtTrailEfect
   m_TagString: Untagged
   m_Icon: {fileID: -4453645107408684167, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
@@ -847,7 +847,7 @@ ParticleSystem:
     rateOverTime:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0
+      scalar: 41.03
       minScalar: 0
       maxCurve:
         serializedVersion: 2
