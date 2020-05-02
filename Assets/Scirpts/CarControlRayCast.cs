@@ -5,16 +5,12 @@ public class CarControlRayCast : MonoBehaviour
 {
     [Header("Wheels")]
     public WheelsClass[] wheels;
-    //public Transform[] wheels;
     public Transform frontLeftWheel;
     public Transform frontRightWheel;
-    /*public Transform backLeftWheel;
-    public Transform backRightWheel;*/
     public float wheelRadius=1f;
 
     [Header("Visualisation")]
     public ParticleSystem jumpEffect;
-    //public Transform[] wheelModels;
     public float wheelRotationSpeed = 5f;
     public float trackDistance = 5f;
     [Header("BackLights")]
@@ -24,22 +20,17 @@ public class CarControlRayCast : MonoBehaviour
 
     [Header("Physic")]
     public float maxSpeed = 60f;
-    public float acceleration = 30f;
-    public float backAcceleration = 20f;
-    public float steering = 80f;
-    public float airGravity = 16.5f;
-    public float gravity = 3f;
-    public float suspensionForce = 1f;
-    public Transform centerOfMass;
-    public Transform dynamicCenterOfMass;
+    public float acceleration = 7000f;
+    public float backAcceleration = 5000f;
+    public float steering = 10000f;
+    public float gravity = 5f;
+    public Transform centerOfMovement;
 
     [Header("Raycast")]
-    //public Transform[] rayPoints;
-    public float suspensionStrength = 10f;
-    public float raycastLenght=1f;
+    public float suspensionStrength = 2000f;
+    public float suspensionLenght = 1f;
+    public float damping = 50f;
 
-
-    Material groundMaterial;
 
     private Rigidbody rb;
     private float verticalAxis;
@@ -76,53 +67,18 @@ public class CarControlRayCast : MonoBehaviour
     {
         velocity = transform.InverseTransformDirection(rb.velocity);
 
-        ParticlesControl();
-        Control();
-        Suspension();
-        RotateWheels(velocity);
+        control();
+        movingDirectionCalculate();
+        rotateWheels(velocity);
     }
 
     void FixedUpdate()
     {
         //Debug.Log(velocity);
 
-        RayCasting();
-        CenterOfMassMovement();
-
-        if (grounded && !flipped)
-        {
-            if (Mathf.Abs(currentAcceleration) > 0)
-            {
-                if (rb.velocity.magnitude > maxSpeed)
-                    rb.velocity = rb.velocity.normalized * maxSpeed;
-                else
-                {
-                    rb.AddForce(transform.forward * currentAcceleration, ForceMode.Acceleration);
-                }
-            }
-
-            if (currentRotation > 0)
-                rb.AddRelativeTorque(Vector3.up * currentRotation, ForceMode.Acceleration);
-            else if (currentRotation < 0)
-                rb.AddRelativeTorque(Vector3.up * currentRotation, ForceMode.Acceleration);
-        }
-
-
-        Vector3 direction = (transform.position - prevPosition) * 10f;
-        Vector3 newMovingPos = Vector3.Lerp(movingDirection, direction + transform.position, 10f);
-        newMovingPos.y += 1f;
-        movingDirection = newMovingPos;
-        prevPosition = transform.position;
-
-        if (!grounded)
-            rb.drag = 0;
-        else
-            if (verticalAxis < 0.5)
-                rb.drag = 1.5f;
-        else
-            rb.drag = defaultDrag;
-
-
+        rayCasting();
+        controlForce();
+        dragControl();
 
         foreach (Light light in backLights)
             light.intensity = defaultBackLightsIntensity;
@@ -134,13 +90,30 @@ public class CarControlRayCast : MonoBehaviour
         }
     }
 
-    void Control()
+    void dragControl()
     {
+        if (!grounded)
+            rb.drag = 0;
+        else
+    if (Mathf.Abs(verticalAxis) < 0.1f)
+            rb.drag = 1.5f;
+        else
+            rb.drag = defaultDrag;
+    }
 
+    void movingDirectionCalculate()
+    {
+        Vector3 direction = (transform.position - prevPosition) * 10f;
+        Vector3 newMovingPos = Vector3.Lerp(movingDirection, direction + transform.position, 10f);
+        newMovingPos.y += 1f;
+        movingDirection = newMovingPos;
+        prevPosition = transform.position;
+    }
+
+    void control()
+    {
         if(Input.GetKey(KeyCode.T))
-        {
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-        }
 
         verticalAxis = Input.GetAxis("Vertical");
         HorizontalAxis = Input.GetAxis("Horizontal");
@@ -151,59 +124,70 @@ public class CarControlRayCast : MonoBehaviour
             currentAcceleration = backAcceleration * verticalAxis;
         else currentAcceleration = 0;
 
-        if (Mathf.Abs(velocity.z) > 0.05f)
-            currentRotation = steering * HorizontalAxis * (1f - velocity.z / maxSpeed) * (velocity.z/maxSpeed); // 12.8 accel
-        //currentRotation = steering * HorizontalAxis * (velocity.z / 32f); // 12.8 accel
+        if (Mathf.Abs(velocity.z) > 0.01f)
+            currentRotation = steering * HorizontalAxis * (1f - velocity.z / maxSpeed) * (velocity.z/maxSpeed);
     }
 
-    void CenterOfMassMovement()
+    void controlForce()
     {
-        if (grounded && verticalAxis != 0)
+        if (grounded)
         {
-            Vector3 centerPosition = centerOfMass.position;
-            float radiusOfMovement = 3f;
-
-            Vector3 newPos = dynamicCenterOfMass.position + dynamicCenterOfMass.forward * -verticalAxis * Time.deltaTime * 18f;
-            //newPos = newPos + dynamicCenterOfMass.right * HorizontalAxis * Time.deltaTime * 10f;
-
-            float distance = Vector3.Distance(newPos, centerPosition);
-
-            if (distance > radiusOfMovement)
+            if (Mathf.Abs(currentAcceleration) > 0)
             {
-                Vector3 fromOriginToObject = newPos - centerPosition;
-                fromOriginToObject *= radiusOfMovement / distance;
-                newPos = centerPosition + fromOriginToObject;
+                if (rb.velocity.magnitude > maxSpeed)
+                    rb.velocity = rb.velocity.normalized * maxSpeed;
+                else
+                {
+                    Vector3 groundNormal;
+                    RaycastHit hit;
+                    if (Physics.Raycast(transform.position, -transform.up, out hit, 10f, layerMask))
+                    {
+                        groundNormal = hit.normal;
+                        Vector3 force = Vector3.ProjectOnPlane(transform.forward * currentAcceleration, groundNormal);
+                        rb.AddForceAtPosition(force, centerOfMovement.transform.position, ForceMode.Force);
+                    }
+                }
             }
 
-            dynamicCenterOfMass.position = newPos;
+            if (currentRotation > 0)
+                rb.AddTorque(Vector3.up * currentRotation, ForceMode.Force);
+            else if (currentRotation < 0)
+                rb.AddTorque(Vector3.up * currentRotation, ForceMode.Force);
         }
-        else dynamicCenterOfMass.position = Vector3.MoveTowards(dynamicCenterOfMass.position, centerOfMass.position, Time.deltaTime * 18f);
     }
 
-    void RayCasting()
+    void rayCasting()
     {
         RaycastHit hit;
+
+        grounded = false;
+
         foreach (WheelsClass wheel in wheels)
         {
-            if (Physics.Raycast(wheel.raySource.position, -transform.up, out hit, raycastLenght, layerMask))
+            if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, suspensionLenght, layerMask))
             {
-                groundMaterial = hit.collider.GetComponent<MeshRenderer>().material;
-                rb.AddForceAtPosition(Vector3.up * suspensionStrength * Mathf.Pow((1.0f - hit.distance / raycastLenght), 0.8f), wheel.raySource.position, ForceMode.Acceleration); // степень - зависимость силы от дистанции до земли
+                grounded = true;
+                flipped = false;
+
+                wheel.particleSource.GetComponent<ParticleSystemRenderer>().material = hit.collider.GetComponent<MeshRenderer>().material;
+                wheel.particleSource.Play();
+
                 if (!grounded && !flipped && Mathf.Abs(velocity.y) > 15f)
                 {
-                    jumpEffect.GetComponent<ParticleSystemRenderer>().material = groundMaterial;
+                    jumpEffect.GetComponent<ParticleSystemRenderer>().material = hit.collider.GetComponent<MeshRenderer>().material;
                     GameObject groundingEffect = Instantiate(jumpEffect.gameObject, transform.position, Quaternion.Euler(90, 0, 0));
                     Destroy(groundingEffect, 1f);
                 }
-                rb.AddForceAtPosition(gravity * Vector3.down, transform.position, ForceMode.Acceleration);
 
-                grounded = true;
-                flipped = false;
+                float distance = suspensionLenght - hit.distance;
+                float force = suspensionStrength * distance + (-damping * rb.GetPointVelocity(wheel.raySource.transform.position).y);
+
+                rb.AddForceAtPosition(transform.up * force, wheel.raySource.transform.position, ForceMode.Force);
             }
             else
             {
-               rb.AddForceAtPosition(airGravity * Vector3.down, centerOfMass.position, ForceMode.Acceleration);
-               grounded = false;
+                rb.AddForceAtPosition(Vector3.down * gravity, wheel.raySource.transform.position, ForceMode.Acceleration);
+                wheel.particleSource.Stop();
             }
         }
 
@@ -212,34 +196,28 @@ public class CarControlRayCast : MonoBehaviour
             grounded = true;
             flipped = true;
         }
-    }
-    void Suspension()
-    {
-        if (Mathf.Abs(velocity.z) / maxSpeed < 0.4f && verticalAxis != 0)
-        {
-            rb.AddForceAtPosition(-dynamicCenterOfMass.up * suspensionForce, dynamicCenterOfMass.position, ForceMode.Acceleration);
-        }
-
-        RaycastHit hit;
 
         foreach (WheelsClass wheel in wheels)
         {
-            if (Physics.Raycast(wheel.raySource.position, -wheel.raySource.up, out hit, raycastLenght, layerMask))
+            if (Physics.Raycast(wheel.raySource.position, -wheel.raySource.up, out hit, suspensionLenght, layerMask))
             {
                 Vector3 groundedPosition = hit.point + wheel.wheel.up * wheelRadius;
-                if (wheel.wheelModel.position.y + 1f > groundedPosition.y)
-                    wheel.wheelModel.position = Vector3.Lerp(wheel.wheelModel.position, groundedPosition, Time.deltaTime * 10f);
+
+                if (groundedPosition.y > wheel.wheel.position.y)
+                    groundedPosition = wheel.wheel.position;
+
+                wheel.wheelModel.position = Vector3.Lerp(wheel.wheelModel.position, groundedPosition, Time.deltaTime * 10f);
             }
-            else 
+            else
                 wheel.wheelModel.position = Vector3.Lerp(wheel.wheelModel.position, wheel.wheel.position, Time.deltaTime * 8f);
         }
     }
 
-    void RotateWheels(Vector3 velocity)
+    void rotateWheels(Vector3 velocity)
     {
         foreach(WheelsClass wheel in wheels)
         {
-            if (!flipped && Mathf.Abs(velocity.z)>0.1f)
+            if (!flipped && Mathf.Abs(velocity.z)>0.01f)
                 wheel.wheelModel.Rotate(wheelRotationSpeed * Time.deltaTime * velocity.z, 0, 0, Space.Self);
             else wheel.wheelModel.Rotate(wheelRotationSpeed * Time.deltaTime * verticalAxis * acceleration * 0.2f, 0, 0, Space.Self);
         }
@@ -267,22 +245,6 @@ public class CarControlRayCast : MonoBehaviour
         frontRightWheel.localEulerAngles = new Vector3(0, ClampAngle(frontRightWheel.localEulerAngles.y, -50f, 50f), 0);
     }
 
-    void ParticlesControl()
-    {
-
-        if (!grounded)
-            foreach (WheelsClass wheel in wheels)
-                wheel.particleSource.Stop();
-        else
-            foreach (WheelsClass wheel in wheels)
-            {
-                wheel.particleSource.GetComponent<ParticleSystemRenderer>().material = groundMaterial;
-                wheel.particleSource.Play();
-            }
-    }
-
-
-
     float ClampAngle(float angle, float min, float max)
     {
         if (angle < 90 || angle > 270) {       // if angle in the critic region...
@@ -295,34 +257,37 @@ public class CarControlRayCast : MonoBehaviour
         return angle;
     }
 
-
     void OnDrawGizmos()
     {
-        Gizmos.color = Color.blue;
-        foreach (var wheel in wheels)
-            Gizmos.DrawSphere(wheel.wheel.position,0.2f);
-        Gizmos.color = Color.green;
-        foreach (var wheel in wheels)
-            Gizmos.DrawSphere(wheel.wheel.position, 0.15f);
-
-        Gizmos.color = Color.red;
         RaycastHit hit;
-        foreach (var wheel in wheels)
+        foreach (WheelsClass wheel in wheels)
         {
-            Gizmos.DrawSphere(wheel.raySource.position, 0.1f);
-            if (Physics.Raycast(wheel.raySource.position, -transform.up, out hit, raycastLenght))
+            Gizmos.color = Color.red;
+            if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, suspensionLenght, layerMask))
             {
-                Gizmos.DrawLine(wheel.raySource.position, hit.point);
-                Gizmos.DrawSphere(hit.point, 0.1f);
+                Gizmos.color = Color.blue;
+                Gizmos.DrawLine(wheel.raySource.transform.position, hit.point);
+                Gizmos.DrawCube(hit.point, Vector3.one * 0.1f);
             }
             else
             {
-                Gizmos.DrawLine(wheel.raySource.position, wheel.raySource.position - transform.up * raycastLenght);
+                Gizmos.DrawLine(wheel.raySource.transform.position, wheel.raySource.transform.position - transform.up * suspensionLenght);
+                Gizmos.DrawCube(wheel.raySource.transform.position - transform.up * suspensionLenght, Vector3.one * 0.1f);
             }
-        }
+            Gizmos.DrawCube(wheel.raySource.transform.position, Vector3.one * 0.1f);
 
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawLine(transform.position, movingDirection);
-        Gizmos.DrawSphere(movingDirection, 0.2f);
+
+            Gizmos.color = Color.green;
+            if (Physics.Raycast(transform.position, -transform.up, out hit, 10f, layerMask))
+            {
+                Gizmos.color = Color.blue;
+                Gizmos.DrawCube(hit.point, Vector3.one * 0.1f);
+                Gizmos.DrawLine(transform.position, hit.point);
+
+                //normal
+                Gizmos.DrawLine(hit.point, hit.point + hit.normal * 2f);
+            }
+            Gizmos.DrawCube(transform.position, Vector3.one * 0.1f);
+        }
     }
 }
