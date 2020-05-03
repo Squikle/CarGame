@@ -1,133 +1,64 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 
+[RequireComponent(typeof(CarPhysic))]
 public class CarControl : MonoBehaviour
 {
-    public Transform frontLeftWheel;
-    public Transform frontRightWheel;
-    public Transform backLeftWheel;
-    public Transform backRightWheel;
+    private CarPhysic carPhysic;
 
-    public Transform frontLeftWheelModel;
-    public Transform frontRightWheelModel;
-    public Transform backLeftWheelModel;
-    public Transform backRightWheelModel;
 
-    public Transform cubeObject;
+    private float currentAcceleration;
+    private float currentRotation;
 
-    public Transform car;
-    public Rigidbody sphere;
 
-    public float acceleration = 30f;
-    public float steering = 80f;
-    public float gravity = 10f;
 
-    public float speedStep = 12f;
-    public float rotateStep = 4f;
+    void Start() => carPhysic = GetComponent<CarPhysic>();
+    void Update() => Control();
+    void FixedUpdate() => ControlForce();
 
-    float currentSpeed, speed;
-    float currentRotate, rotate;
 
-    Vector3 prevPosition;
-
-    public float trackDistance = 5f;
-
-    public float wheelRotationSpeed = 5f;
-
-    void Update()
-    {
-        var velocity = transform.InverseTransformDirection(sphere.GetComponent<Rigidbody>().velocity);
-        Control();
-        RotateCar();
-        GroundCheck();
-        RotateWheels(velocity);
-    }
-    void GroundCheck()
-    {
-        RaycastHit groundHit;
-        Physics.Raycast(transform.position, Vector3.down, out groundHit, 1f);
-        //Debug.DrawLine(transform.position, hitNear.point, Color.red, 0.1f);
-
-        car.up = Vector3.Lerp(car.up, groundHit.normal, 8.0f * Time.deltaTime);
-        car.Rotate(0, transform.eulerAngles.y, 0);
-    }
     void Control()
     {
-        //speed = acceleration;
-        speed = acceleration * Input.GetAxis("Vertical");
+        if (Input.GetKey(KeyCode.T))
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
 
-        /*if (Input.GetAxis("Horizontal") > 0)
-            if (transform.rotation.y < 0.5f)
-            {
-                rotate = steering * Input.GetAxis("Horizontal");
-            }
-        if (Input.GetAxis("Horizontal") < 0)
-            if (transform.rotation.y > -0.5f)
-            {
-                rotate = steering * Input.GetAxis("Horizontal");
-            }*/
-        rotate = steering * Input.GetAxis("Horizontal");
+        carPhysic.verticalAxis = Input.GetAxis("Vertical");
+        carPhysic.HorizontalAxis = Input.GetAxis("Horizontal");
 
-        currentSpeed = Mathf.SmoothStep(currentSpeed, speed, Time.deltaTime * speedStep);
-        currentRotate = Mathf.Lerp(currentRotate, rotate, Time.deltaTime * rotateStep);
+        if (carPhysic.verticalAxis > 0)
+            currentAcceleration = carPhysic.carStats.acceleration * carPhysic.verticalAxis;
+        else if (carPhysic.verticalAxis < 0)
+            currentAcceleration = carPhysic.carStats.backAcceleration * carPhysic.verticalAxis;
+        else currentAcceleration = 0;
+
+        if (Mathf.Abs(carPhysic.velocity.z) > 0.01f)
+            currentRotation = carPhysic.carStats.steering * carPhysic.HorizontalAxis * (1f - carPhysic.velocity.z / carPhysic.carStats.maxSpeed) * (carPhysic.velocity.z / carPhysic.carStats.maxSpeed);
     }
-    void RotateCar()
+    void ControlForce()
     {
-        transform.position = sphere.transform.position - new Vector3(0, 1.37f, 0f);
-        transform.Rotate(0, currentRotate * Time.deltaTime, 0);
-    }
-    void RotateWheels(Vector3 velocity)
-    {
-        frontLeftWheelModel.Rotate(wheelRotationSpeed * Time.deltaTime * velocity.z, 0, 0, Space.Self);
-        frontRightWheelModel.Rotate(wheelRotationSpeed * Time.deltaTime * velocity.z, 0, 0, Space.Self);
-        backLeftWheelModel.Rotate(wheelRotationSpeed * Time.deltaTime * velocity.z, 0, 0, Space.Self);
-        backRightWheelModel.Rotate(wheelRotationSpeed * Time.deltaTime * velocity.z, 0, 0, Space.Self);
-
-        Vector3 newRotationLeft = car.forward;
-        Vector3 newRotationRight = car.forward;
-        Debug.Log(newRotationRight);
-        if (Input.GetAxis("Horizontal") > -0.4 && Input.GetAxis("Horizontal") < 0.4)
+        if (carPhysic.grounded)
         {
-            if (Vector3.Distance(sphere.transform.position, cubeObject.position) > trackDistance)
+            if (Mathf.Abs(currentAcceleration) > 0)
             {
-                newRotationLeft = cubeObject.position - frontLeftWheel.position;
-                newRotationRight = cubeObject.position - frontRightWheel.position;
+                if (carPhysic.rb.velocity.magnitude > carPhysic.carStats.maxSpeed)
+                    carPhysic.rb.velocity = carPhysic.rb.velocity.normalized * carPhysic.carStats.maxSpeed;
+                else
+                {
+                    Vector3 groundNormal;
+                    RaycastHit hit;
+                    if (Physics.Raycast(transform.position, -transform.up, out hit, 10f, carPhysic.layerMask))
+                    {
+                        groundNormal = hit.normal;
+                        Vector3 force = Vector3.ProjectOnPlane(transform.forward * currentAcceleration, groundNormal);
+                        carPhysic.rb.AddForceAtPosition(force, carPhysic.centerOfMovement.transform.position, ForceMode.Force);
+                    }
+                }
             }
-            frontLeftWheel.forward = Vector3.Lerp(frontLeftWheel.forward, newRotationLeft, Time.deltaTime);
-            frontRightWheel.forward = Vector3.Lerp(frontRightWheel.forward, newRotationRight, Time.deltaTime);
-        }
-        else
-        {
-            newRotationLeft = Quaternion.Euler(0, Input.GetAxis("Horizontal") * 45f, 0) * car.forward;
-            newRotationRight = Quaternion.Euler(0, Input.GetAxis("Horizontal") * 45f, 0) * car.forward;
-            frontLeftWheel.forward = Vector3.Lerp(frontLeftWheel.forward, newRotationLeft, Time.deltaTime * 12f);
-            frontRightWheel.forward = Vector3.Lerp(frontRightWheel.forward, newRotationRight, Time.deltaTime * 12f);
-        }
-        frontLeftWheel.localEulerAngles = new Vector3(frontLeftWheel.localEulerAngles.x, ClampAngle(frontLeftWheel.localEulerAngles.y, -50f, 50f), frontLeftWheel.localEulerAngles.z);
-        frontRightWheel.localEulerAngles = new Vector3(frontRightWheel.localEulerAngles.x, ClampAngle(frontRightWheel.localEulerAngles.y, -50f, 50f), frontRightWheel.localEulerAngles.z);
-    }
 
-    void FixedUpdate()
-    {
-        sphere.AddForce(car.transform.forward * currentSpeed, ForceMode.Acceleration);
-        sphere.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
-
-        Vector3 direction = (sphere.position - prevPosition)*10f;
-        Debug.DrawRay(sphere.position, direction, Color.red, 0.05f);
-        cubeObject.position = Vector3.Lerp(cubeObject.position, direction + sphere.position, 10f);
-        prevPosition = sphere.position;
-    }
-
-    float ClampAngle(float angle, float min, float max)
-    {
-        if (angle < 90 || angle > 270) {       // if angle in the critic region...
-            if (angle > 180) angle -= 360;  // convert all angles to -180..+180
-            if (max > 180) max -= 360;
-            if (min > 180) min -= 360;
+            if (currentRotation > 0)
+                carPhysic.rb.AddTorque(Vector3.up * currentRotation, ForceMode.Force);
+            else if (currentRotation < 0)
+                carPhysic.rb.AddTorque(Vector3.up * currentRotation, ForceMode.Force);
         }
-        angle = Mathf.Clamp(angle, min, max);
-        if (angle < 0) angle += 360;  // if angle negative, convert to 0..360
-        return angle;
     }
 }

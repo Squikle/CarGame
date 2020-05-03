@@ -1,58 +1,47 @@
-﻿using UnityEngine;
-using UnityEngine.SceneManagement;
+﻿using System;
+using UnityEngine;
 
-public class CarControlRayCast : MonoBehaviour
+public class CarPhysic : MonoBehaviour
 {
+    public CarStats carStats;
+
     [Header("Wheels")]
     public WheelsClass[] wheels;
     public Transform frontLeftWheel;
     public Transform frontRightWheel;
-    public float wheelRadius=1f;
 
     [Header("Visualisation")]
-    public ParticleSystem jumpEffect;
-    public float wheelRotationSpeed = 5f;
-    public float trackDistance = 5f;
+    private float wheelRotationSpeed = 60f;
+    private float trackDistance = 5f;
+
     [Header("BackLights")]
     public Light[] backLights;
     private float defaultBackLightsIntensity;
 
-
     [Header("Physic")]
-    public float maxSpeed = 60f;
-    public float acceleration = 7000f;
-    public float backAcceleration = 5000f;
-    public float steering = 10000f;
-    public float gravity = 5f;
+    private float gravity = 8f;
     public Transform centerOfMovement;
 
-    [Header("Raycast")]
-    public float suspensionStrength = 2000f;
-    public float suspensionLenght = 1f;
-    public float damping = 50f;
-
-
-    private Rigidbody rb;
-    private float verticalAxis;
-    private float HorizontalAxis;
-
     private Vector3 prevPosition;
-    private Vector3 velocity;
     private Vector3 movingDirection;
 
-    private bool grounded;
-    private bool flipped;
+    [NonSerialized] public Rigidbody rb;
+    [NonSerialized]  public Vector3 velocity;
 
-    private float currentAcceleration;
-    private float currentRotation;
+    [NonSerialized] public bool grounded;
+    [NonSerialized] public bool flipped;
+
+    [NonSerialized] public int layerMask;
+
+
+    [NonSerialized] public float verticalAxis;
+    [NonSerialized] public float HorizontalAxis;
 
     private float defaultDrag;
 
-
-    private int layerMask;
-
     void Start()
     {
+
         layerMask = 1 << LayerMask.NameToLayer("Player");
         layerMask = ~layerMask;
 
@@ -67,7 +56,7 @@ public class CarControlRayCast : MonoBehaviour
     {
         velocity = transform.InverseTransformDirection(rb.velocity);
 
-        control();
+        //control();
         movingDirectionCalculate();
         rotateWheels(velocity);
     }
@@ -77,7 +66,7 @@ public class CarControlRayCast : MonoBehaviour
         //Debug.Log(velocity);
 
         rayCasting();
-        controlForce();
+        //controlForce();
         dragControl();
 
         foreach (Light light in backLights)
@@ -110,32 +99,32 @@ public class CarControlRayCast : MonoBehaviour
         prevPosition = transform.position;
     }
 
-    void control()
+    /*void control()
     {
-        if(Input.GetKey(KeyCode.T))
+        if (Input.GetKey(KeyCode.T))
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
 
         verticalAxis = Input.GetAxis("Vertical");
         HorizontalAxis = Input.GetAxis("Horizontal");
 
         if (verticalAxis > 0)
-            currentAcceleration = acceleration * verticalAxis;
+            currentAcceleration = carStats.acceleration * verticalAxis;
         else if (verticalAxis < 0)
-            currentAcceleration = backAcceleration * verticalAxis;
+            currentAcceleration = carStats.backAcceleration * verticalAxis;
         else currentAcceleration = 0;
 
         if (Mathf.Abs(velocity.z) > 0.01f)
-            currentRotation = steering * HorizontalAxis * (1f - velocity.z / maxSpeed) * (velocity.z/maxSpeed);
-    }
+            currentRotation = carStats.steering * HorizontalAxis * (1f - velocity.z / carStats.maxSpeed) * (velocity.z / carStats.maxSpeed);
+    }*/
 
-    void controlForce()
+    /*void controlForce()
     {
         if (grounded)
         {
             if (Mathf.Abs(currentAcceleration) > 0)
             {
-                if (rb.velocity.magnitude > maxSpeed)
-                    rb.velocity = rb.velocity.normalized * maxSpeed;
+                if (rb.velocity.magnitude > carStats.maxSpeed)
+                    rb.velocity = rb.velocity.normalized * carStats.maxSpeed;
                 else
                 {
                     Vector3 groundNormal;
@@ -154,7 +143,7 @@ public class CarControlRayCast : MonoBehaviour
             else if (currentRotation < 0)
                 rb.AddTorque(Vector3.up * currentRotation, ForceMode.Force);
         }
-    }
+    }*/
 
     void rayCasting()
     {
@@ -164,7 +153,7 @@ public class CarControlRayCast : MonoBehaviour
 
         foreach (WheelsClass wheel in wheels)
         {
-            if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, suspensionLenght, layerMask))
+            if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, carStats.suspensionLenght, layerMask))
             {
                 grounded = true;
                 flipped = false;
@@ -174,13 +163,13 @@ public class CarControlRayCast : MonoBehaviour
 
                 if (!grounded && !flipped && Mathf.Abs(velocity.y) > 15f)
                 {
-                    jumpEffect.GetComponent<ParticleSystemRenderer>().material = hit.collider.GetComponent<MeshRenderer>().material;
-                    GameObject groundingEffect = Instantiate(jumpEffect.gameObject, transform.position, Quaternion.Euler(90, 0, 0));
+                    carStats.jumpEffect.GetComponent<ParticleSystemRenderer>().material = hit.collider.GetComponent<MeshRenderer>().material;
+                    GameObject groundingEffect = Instantiate(carStats.jumpEffect.gameObject, transform.position, Quaternion.Euler(90, 0, 0));
                     Destroy(groundingEffect, 1f);
                 }
 
-                float distance = suspensionLenght - hit.distance;
-                float force = suspensionStrength * distance + (-damping * rb.GetPointVelocity(wheel.raySource.transform.position).y);
+                float distance = carStats.suspensionLenght - hit.distance;
+                float force = carStats.suspensionStrength * distance + (-carStats.damping * rb.GetPointVelocity(wheel.raySource.transform.position).y);
 
                 rb.AddForceAtPosition(transform.up * force, wheel.raySource.transform.position, ForceMode.Force);
             }
@@ -199,9 +188,9 @@ public class CarControlRayCast : MonoBehaviour
 
         foreach (WheelsClass wheel in wheels)
         {
-            if (Physics.Raycast(wheel.raySource.position, -wheel.raySource.up, out hit, suspensionLenght, layerMask))
+            if (Physics.Raycast(wheel.raySource.position, -wheel.raySource.up, out hit, carStats.suspensionLenght, layerMask))
             {
-                Vector3 groundedPosition = hit.point + wheel.wheel.up * wheelRadius;
+                Vector3 groundedPosition = hit.point + wheel.wheel.up * carStats.wheelRadius;
 
                 if (groundedPosition.y > wheel.wheel.position.y)
                     groundedPosition = wheel.wheel.position;
@@ -215,11 +204,11 @@ public class CarControlRayCast : MonoBehaviour
 
     void rotateWheels(Vector3 velocity)
     {
-        foreach(WheelsClass wheel in wheels)
+        foreach (WheelsClass wheel in wheels)
         {
-            if (!flipped && Mathf.Abs(velocity.z)>0.01f)
+            if (!flipped && Mathf.Abs(velocity.z) > 0.01f)
                 wheel.wheelModel.Rotate(wheelRotationSpeed * Time.deltaTime * velocity.z, 0, 0, Space.Self);
-            else wheel.wheelModel.Rotate(wheelRotationSpeed * Time.deltaTime * verticalAxis * acceleration * 0.2f, 0, 0, Space.Self);
+            else wheel.wheelModel.Rotate(wheelRotationSpeed * Time.deltaTime * verticalAxis * carStats.acceleration * 0.2f, 0, 0, Space.Self);
         }
 
         Vector3 newRotationLeft = transform.forward;
@@ -247,7 +236,8 @@ public class CarControlRayCast : MonoBehaviour
 
     float ClampAngle(float angle, float min, float max)
     {
-        if (angle < 90 || angle > 270) {       // if angle in the critic region...
+        if (angle < 90 || angle > 270)
+        {       // if angle in the critic region...
             if (angle > 180) angle -= 360;  // convert all angles to -180..+180
             if (max > 180) max -= 360;
             if (min > 180) min -= 360;
@@ -263,7 +253,7 @@ public class CarControlRayCast : MonoBehaviour
         foreach (WheelsClass wheel in wheels)
         {
             Gizmos.color = Color.red;
-            if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, suspensionLenght, layerMask))
+            if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, carStats.suspensionLenght, layerMask))
             {
                 Gizmos.color = Color.blue;
                 Gizmos.DrawLine(wheel.raySource.transform.position, hit.point);
@@ -271,8 +261,8 @@ public class CarControlRayCast : MonoBehaviour
             }
             else
             {
-                Gizmos.DrawLine(wheel.raySource.transform.position, wheel.raySource.transform.position - transform.up * suspensionLenght);
-                Gizmos.DrawCube(wheel.raySource.transform.position - transform.up * suspensionLenght, Vector3.one * 0.1f);
+                Gizmos.DrawLine(wheel.raySource.transform.position, wheel.raySource.transform.position - transform.up * carStats.suspensionLenght);
+                Gizmos.DrawCube(wheel.raySource.transform.position - transform.up * carStats.suspensionLenght, Vector3.one * 0.1f);
             }
             Gizmos.DrawCube(wheel.raySource.transform.position, Vector3.one * 0.1f);
 
