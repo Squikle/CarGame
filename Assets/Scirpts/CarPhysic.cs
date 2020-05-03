@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class CarPhysic : MonoBehaviour
@@ -99,52 +100,6 @@ public class CarPhysic : MonoBehaviour
         prevPosition = transform.position;
     }
 
-    /*void control()
-    {
-        if (Input.GetKey(KeyCode.T))
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-
-        verticalAxis = Input.GetAxis("Vertical");
-        HorizontalAxis = Input.GetAxis("Horizontal");
-
-        if (verticalAxis > 0)
-            currentAcceleration = carStats.acceleration * verticalAxis;
-        else if (verticalAxis < 0)
-            currentAcceleration = carStats.backAcceleration * verticalAxis;
-        else currentAcceleration = 0;
-
-        if (Mathf.Abs(velocity.z) > 0.01f)
-            currentRotation = carStats.steering * HorizontalAxis * (1f - velocity.z / carStats.maxSpeed) * (velocity.z / carStats.maxSpeed);
-    }*/
-
-    /*void controlForce()
-    {
-        if (grounded)
-        {
-            if (Mathf.Abs(currentAcceleration) > 0)
-            {
-                if (rb.velocity.magnitude > carStats.maxSpeed)
-                    rb.velocity = rb.velocity.normalized * carStats.maxSpeed;
-                else
-                {
-                    Vector3 groundNormal;
-                    RaycastHit hit;
-                    if (Physics.Raycast(transform.position, -transform.up, out hit, 10f, layerMask))
-                    {
-                        groundNormal = hit.normal;
-                        Vector3 force = Vector3.ProjectOnPlane(transform.forward * currentAcceleration, groundNormal);
-                        rb.AddForceAtPosition(force, centerOfMovement.transform.position, ForceMode.Force);
-                    }
-                }
-            }
-
-            if (currentRotation > 0)
-                rb.AddTorque(Vector3.up * currentRotation, ForceMode.Force);
-            else if (currentRotation < 0)
-                rb.AddTorque(Vector3.up * currentRotation, ForceMode.Force);
-        }
-    }*/
-
     void rayCasting()
     {
         RaycastHit hit;
@@ -155,18 +110,20 @@ public class CarPhysic : MonoBehaviour
         {
             if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, carStats.suspensionLenght, layerMask))
             {
+                if (!grounded && !flipped && velocity.y < -15f)
+                {
+                    carStats.jumpEffect.GetComponent<ParticleSystemRenderer>().material = hit.collider.GetComponent<MeshRenderer>().material;
+                    GameObject groundingEffect = Instantiate(carStats.jumpEffect.gameObject, transform.position, Quaternion.Euler(90, 0, 0));
+                    Destroy(groundingEffect, 1f);
+                }
+
                 grounded = true;
                 flipped = false;
 
                 wheel.particleSource.GetComponent<ParticleSystemRenderer>().material = hit.collider.GetComponent<MeshRenderer>().material;
                 wheel.particleSource.Play();
 
-                if (!grounded && !flipped && Mathf.Abs(velocity.y) > 15f)
-                {
-                    carStats.jumpEffect.GetComponent<ParticleSystemRenderer>().material = hit.collider.GetComponent<MeshRenderer>().material;
-                    GameObject groundingEffect = Instantiate(carStats.jumpEffect.gameObject, transform.position, Quaternion.Euler(90, 0, 0));
-                    Destroy(groundingEffect, 1f);
-                }
+                Debug.Log($"Ground: {grounded} Flip: {flipped} Vel: {velocity}");
 
                 float distance = carStats.suspensionLenght - hit.distance;
                 float force = carStats.suspensionStrength * distance + (-carStats.damping * rb.GetPointVelocity(wheel.raySource.transform.position).y);
@@ -213,7 +170,7 @@ public class CarPhysic : MonoBehaviour
 
         Vector3 newRotationLeft = transform.forward;
         Vector3 newRotationRight = transform.forward;
-        if (Mathf.Abs(Input.GetAxis("Horizontal")) < 0.4f)
+        if (Mathf.Abs(HorizontalAxis) < 0.4f)
         {
             if (Vector3.Distance(transform.position, movingDirection) > trackDistance && velocity.z > -1f)
             {
@@ -225,8 +182,8 @@ public class CarPhysic : MonoBehaviour
         }
         else
         {
-            newRotationLeft = Quaternion.Euler(frontLeftWheel.eulerAngles.x, Input.GetAxis("Horizontal") * 45f, frontLeftWheel.eulerAngles.z) * transform.forward;
-            newRotationRight = Quaternion.Euler(frontLeftWheel.eulerAngles.x, Input.GetAxis("Horizontal") * 45f, frontLeftWheel.eulerAngles.z) * transform.forward;
+            newRotationLeft = Quaternion.Euler(frontLeftWheel.eulerAngles.x, HorizontalAxis * 45f, frontLeftWheel.eulerAngles.z) * transform.forward;
+            newRotationRight = Quaternion.Euler(frontLeftWheel.eulerAngles.x, HorizontalAxis * 45f, frontLeftWheel.eulerAngles.z) * transform.forward;
             frontLeftWheel.forward = Vector3.Lerp(frontLeftWheel.forward, newRotationLeft, Time.deltaTime * 12f);
             frontRightWheel.forward = Vector3.Lerp(frontRightWheel.forward, newRotationRight, Time.deltaTime * 12f);
         }

@@ -12,7 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 273573146a898de43b8fc9e582aa3c81, type: 3}
   m_Name: stats_DeLorean
   m_EditorClassIdentifier: 
-  jumpEffect: {fileID: 0}
+  jumpEffect: {fileID: 2277720633018723980, guid: 09d15114f181a824aac106421e107e2f,
+    type: 3}
+  wheelRadius: 1
   maxSpeed: 60
   acceleration: 14000
   backAcceleration: 8000

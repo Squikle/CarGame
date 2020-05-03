@@ -13,18 +13,43 @@ public class CarControl : MonoBehaviour
 
 
     void Start() => carPhysic = GetComponent<CarPhysic>();
-    void Update() => Control();
+    void Update()
+    {
+        TouchInputCheck();
+        Control();
+    }
     void FixedUpdate() => ControlForce();
 
+    void TouchInputCheck()
+    {
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
 
-    void Control()
+
+            if (touch.phase != TouchPhase.Ended)
+            {
+                carPhysic.verticalAxis = 1;
+                carPhysic.HorizontalAxis = -(touch.position.x - Screen.width/2)*2 / Screen.width;
+                Debug.Log("Phase: " + touch.phase + " Place: " + touch.position + " Horizontal: " + carPhysic.HorizontalAxis);
+            }
+            else
+            {
+                carPhysic.verticalAxis = 0;
+                carPhysic.HorizontalAxis = 0;
+            }
+        }
+    }
+    void InputCheck()
     {
         if (Input.GetKey(KeyCode.T))
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
 
         carPhysic.verticalAxis = Input.GetAxis("Vertical");
         carPhysic.HorizontalAxis = Input.GetAxis("Horizontal");
-
+    }
+    void Control()
+    {
         if (carPhysic.verticalAxis > 0)
             currentAcceleration = carPhysic.carStats.acceleration * carPhysic.verticalAxis;
         else if (carPhysic.verticalAxis < 0)
@@ -34,6 +59,8 @@ public class CarControl : MonoBehaviour
         if (Mathf.Abs(carPhysic.velocity.z) > 0.01f)
             currentRotation = carPhysic.carStats.steering * carPhysic.HorizontalAxis * (1f - carPhysic.velocity.z / carPhysic.carStats.maxSpeed) * (carPhysic.velocity.z / carPhysic.carStats.maxSpeed);
     }
+
+
     void ControlForce()
     {
         if (carPhysic.grounded)
