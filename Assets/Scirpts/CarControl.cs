@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityStandardAssets.CrossPlatformInput;
 
 [RequireComponent(typeof(CarPhysic))]
 public class CarControl : MonoBehaviour
@@ -15,10 +16,16 @@ public class CarControl : MonoBehaviour
     void Start() => carPhysic = GetComponent<CarPhysic>();
     void Update()
     {
-        TouchInputCheck();
+        TouchButtonsInput();
         Control();
     }
     void FixedUpdate() => ControlForce();
+
+    void TouchButtonsInput()
+    {
+        carPhysic.verticalAxis = CrossPlatformInputManager.GetAxis("Vertical");
+        carPhysic.HorizontalAxis = CrossPlatformInputManager.GetAxis("Horizontal");
+    }
 
     void TouchInputCheck()
     {
@@ -30,7 +37,7 @@ public class CarControl : MonoBehaviour
             if (touch.phase != TouchPhase.Ended)
             {
                 carPhysic.verticalAxis = 1;
-                carPhysic.HorizontalAxis = -(touch.position.x - Screen.width/2)*2 / Screen.width;
+                carPhysic.HorizontalAxis = (touch.position.x - Screen.width/2)*2 / Screen.width;
                 Debug.Log("Phase: " + touch.phase + " Place: " + touch.position + " Horizontal: " + carPhysic.HorizontalAxis);
             }
             else
@@ -58,8 +65,8 @@ public class CarControl : MonoBehaviour
 
         if (Mathf.Abs(carPhysic.velocity.z) > 0.01f)
             currentRotation = carPhysic.carStats.steering * carPhysic.HorizontalAxis * (1f - carPhysic.velocity.z / carPhysic.carStats.maxSpeed) * (carPhysic.velocity.z / carPhysic.carStats.maxSpeed);
+        //currentRotation = carPhysic.carStats.steering * carPhysic.HorizontalAxis;
     }
-
 
     void ControlForce()
     {

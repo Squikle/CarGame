@@ -123,8 +123,6 @@ public class CarPhysic : MonoBehaviour
                 wheel.particleSource.GetComponent<ParticleSystemRenderer>().material = hit.collider.GetComponent<MeshRenderer>().material;
                 wheel.particleSource.Play();
 
-                Debug.Log($"Ground: {grounded} Flip: {flipped} Vel: {velocity}");
-
                 float distance = carStats.suspensionLenght - hit.distance;
                 float force = carStats.suspensionStrength * distance + (-carStats.damping * rb.GetPointVelocity(wheel.raySource.transform.position).y);
 
