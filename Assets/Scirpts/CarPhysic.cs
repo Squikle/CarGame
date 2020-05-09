@@ -2,9 +2,13 @@
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
+[RequireComponent(typeof(CarStats))]
+[RequireComponent(typeof(ParticlesController))]
+[RequireComponent(typeof(CarControl))]
 public class CarPhysic : MonoBehaviour
 {
     public CarStats carStats;
+    private ParticlesController particlesController;
 
     [Header("Wheels")]
     public WheelsClass[] wheels;
@@ -27,16 +31,17 @@ public class CarPhysic : MonoBehaviour
     private Vector3 movingDirection;
 
     [NonSerialized] public Rigidbody rb;
-    [NonSerialized]  public Vector3 velocity;
+    [NonSerialized] public Vector3 velocity;
 
     [NonSerialized] public bool grounded;
     [NonSerialized] public bool flipped;
 
     [NonSerialized] public int layerMask;
 
-
     [NonSerialized] public float verticalAxis;
     [NonSerialized] public float HorizontalAxis;
+
+    [NonSerialized] public GameObject surface;
 
     private float defaultDrag;
 
@@ -47,6 +52,7 @@ public class CarPhysic : MonoBehaviour
         layerMask = ~layerMask;
 
         rb = GetComponent<Rigidbody>();
+        particlesController = GetComponent<ParticlesController>();
 
         defaultDrag = rb.drag;
 
@@ -57,7 +63,6 @@ public class CarPhysic : MonoBehaviour
     {
         velocity = transform.InverseTransformDirection(rb.velocity);
 
-        //control();
         movingDirectionCalculate();
         rotateWheels(velocity);
     }
@@ -67,7 +72,6 @@ public class CarPhysic : MonoBehaviour
         //Debug.Log(velocity);
 
         rayCasting();
-        //controlForce();
         dragControl();
 
         foreach (Light light in backLights)
@@ -110,18 +114,14 @@ public class CarPhysic : MonoBehaviour
         {
             if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, carStats.suspensionLenght, layerMask))
             {
+                wheel.surface = hit.collider.gameObject;
+                surface = hit.collider.gameObject;
+
                 if (!grounded && !flipped && velocity.y < -15f)
-                {
-                    carStats.jumpEffect.GetComponent<ParticleSystemRenderer>().material = hit.collider.GetComponent<MeshRenderer>().material;
-                    GameObject groundingEffect = Instantiate(carStats.jumpEffect.gameObject, transform.position, Quaternion.Euler(90, 0, 0));
-                    Destroy(groundingEffect, 1f);
-                }
+                    particlesController.land();
 
                 grounded = true;
                 flipped = false;
-
-                wheel.particleSource.GetComponent<ParticleSystemRenderer>().material = hit.collider.GetComponent<MeshRenderer>().material;
-                wheel.particleSource.Play();
 
                 float distance = carStats.suspensionLenght - hit.distance;
                 float force = carStats.suspensionStrength * distance + (-carStats.damping * rb.GetPointVelocity(wheel.raySource.transform.position).y);
@@ -131,7 +131,7 @@ public class CarPhysic : MonoBehaviour
             else
             {
                 rb.AddForceAtPosition(Vector3.down * gravity, wheel.raySource.transform.position, ForceMode.Acceleration);
-                wheel.particleSource.Stop();
+                wheel.dustParticles.Stop();
             }
         }
 

@@ -17,6 +17,8 @@ public class CarControl : MonoBehaviour
     void Update()
     {
         TouchButtonsInput();
+        if (carPhysic.verticalAxis == 0 && carPhysic.HorizontalAxis == 0)
+            KeyboardInput();
         Control();
     }
     void FixedUpdate() => ControlForce();
@@ -27,7 +29,7 @@ public class CarControl : MonoBehaviour
         carPhysic.HorizontalAxis = CrossPlatformInputManager.GetAxis("Horizontal");
     }
 
-    void TouchInputCheck()
+    void TouchInput()
     {
         if (Input.touchCount > 0)
         {
@@ -47,7 +49,7 @@ public class CarControl : MonoBehaviour
             }
         }
     }
-    void InputCheck()
+    void KeyboardInput()
     {
         if (Input.GetKey(KeyCode.T))
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
