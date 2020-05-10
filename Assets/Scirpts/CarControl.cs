@@ -84,6 +84,7 @@ public class CarControl : MonoBehaviour
                     RaycastHit hit;
                     if (Physics.Raycast(transform.position, -transform.up, out hit, 10f, carPhysic.layerMask))
                     {
+                        carPhysic.surface = hit.collider.gameObject;
                         groundNormal = hit.normal;
                         Vector3 force = Vector3.ProjectOnPlane(transform.forward * currentAcceleration, groundNormal);
                         carPhysic.rb.AddForceAtPosition(force, carPhysic.centerOfMovement.transform.position, ForceMode.Force);

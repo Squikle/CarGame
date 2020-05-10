@@ -5,6 +5,7 @@ public class ParticlesController : MonoBehaviour
 {
     private CarPhysic carPhysic;
 
+    [Range(0, 30)] public float minimalSlipValue=15f;
     void Start() => carPhysic = GetComponent<CarPhysic>();
 
     void Update()
@@ -18,9 +19,11 @@ public class ParticlesController : MonoBehaviour
                 if (groundStats != null)
                 {
                     //smoke
-                    if (Mathf.Abs(carPhysic.velocity.x) > 15f
-                        && carPhysic.verticalAxis != 0
-                        && groundStats.groundType == GroundType.Tough)
+                    if (Mathf.Abs(carPhysic.velocity.x) > minimalSlipValue
+                        && Mathf.Abs(carPhysic.verticalAxis) > 0.3f
+                        && groundStats.groundType == GroundType.Tough
+                        && carPhysic.grounded
+                        && !carPhysic.flipped)
                     {
                         wheel.smokeParticles.Play();
                     }
@@ -36,9 +39,7 @@ public class ParticlesController : MonoBehaviour
                         wheel.dustParticles.Play();
                     }
                     else
-                    {
                         wheel.dustParticles.Stop();
-                    }
                 }
             }
         }
