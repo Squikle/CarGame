@@ -5,43 +5,71 @@ public class ParticlesController : MonoBehaviour
 {
     private CarPhysic carPhysic;
 
-    [Range(0, 30)] public float minimalSlipValue=15f;
+    [SerializeField] [Range(0,30)] private float minSlipValue=15f;
+
     void Start() => carPhysic = GetComponent<CarPhysic>();
 
     void Update()
     {
+        surfaceCheck();
+        driftSmokeManager();
+        dustManager();
+    }
+
+    public void driftSmokeManager()
+    {
         foreach (WheelsClass wheel in carPhysic.wheels)
         {
-            if (wheel.surface != null)
+            GroundStats groundStats;
+            if (groundStats = wheel?.surface?.GetComponent<GroundStats>())
             {
-                GroundStats groundStats = wheel.surface.GetComponent<GroundStats>();
-
-                if (groundStats != null)
+                if (Mathf.Abs(carPhysic.velocity.x) > minSlipValue
+                && groundStats.groundType == GroundType.Tough
+                && carPhysic.grounded
+                && !carPhysic.flipped)
                 {
-                    //smoke
-                    if (Mathf.Abs(carPhysic.velocity.x) > minimalSlipValue
-                        && Mathf.Abs(carPhysic.verticalAxis) > 0.3f
-                        && groundStats.groundType == GroundType.Tough
-                        && carPhysic.grounded
-                        && !carPhysic.flipped)
-                    {
-                        wheel.smokeParticles.Play();
-                    }
-                    else
-                        wheel.smokeParticles.Stop();
-
-                    //dust
-                    if (carPhysic.grounded
-                        && !carPhysic.flipped
-                        && groundStats.groundType == GroundType.Dusty)
-                    {
-                        wheel.dustParticles.GetComponent<ParticleSystemRenderer>().material = wheel.surface.GetComponent<MeshRenderer>().material;
-                        wheel.dustParticles.Play();
-                    }
-                    else
-                        wheel.dustParticles.Stop();
+                    wheel.smokeParticles.Play();
+                    continue;
                 }
             }
+            wheel.smokeParticles.Stop();
+        }
+    }
+    public void dustManager()
+    {
+        foreach (WheelsClass wheel in carPhysic.wheels)
+        {
+            GroundStats groundStats;
+            if (groundStats = wheel?.surface?.GetComponent<GroundStats>())
+            {
+                if (carPhysic.grounded
+                && !carPhysic.flipped
+                && groundStats.groundType == GroundType.Dusty)
+                {
+                    wheel.dustParticles.GetComponent<ParticleSystemRenderer>().material = wheel?.surface.GetComponent<MeshRenderer>().material;
+                    wheel.dustParticles.Play();
+                    continue;
+                }
+            }
+            wheel.dustParticles.Stop();
+        }
+    }
+
+    public void surfaceCheck()
+    {
+        RaycastHit hit;
+
+        foreach (WheelsClass wheel in carPhysic.wheels)
+        {
+            if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, carPhysic.carStats.suspensionLenght, carPhysic.layerMask))
+            {
+                wheel.surface = hit.collider.gameObject;
+            }
+        }
+
+        if (Physics.Raycast(transform.position, -transform.up, out hit, 10f, carPhysic.layerMask))
+        {
+            carPhysic.surface = hit.collider.gameObject;
         }
     }
 

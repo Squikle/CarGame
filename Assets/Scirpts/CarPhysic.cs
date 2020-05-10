@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using TMPro;
 using UnityEngine;
 
 [RequireComponent(typeof(CarStats))]
@@ -35,6 +36,7 @@ public class CarPhysic : MonoBehaviour
 
     [NonSerialized] public bool grounded;
     [NonSerialized] public bool flipped;
+    [NonSerialized] public bool landing;
 
     [NonSerialized] public int layerMask;
 
@@ -47,7 +49,6 @@ public class CarPhysic : MonoBehaviour
 
     void Start()
     {
-
         layerMask = 1 << LayerMask.NameToLayer("Player");
         layerMask = ~layerMask;
 
@@ -115,10 +116,6 @@ public class CarPhysic : MonoBehaviour
             if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, carStats.suspensionLenght, layerMask))
             {
                 wheel.surface = hit.collider.gameObject;
-                surface = hit.collider.gameObject;
-
-                if (!grounded && !flipped && velocity.y < -15f)
-                    particlesController.land();
 
                 grounded = true;
                 flipped = false;
@@ -130,9 +127,16 @@ public class CarPhysic : MonoBehaviour
             }
             else
             {
+                wheel.surface = null;
                 rb.AddForceAtPosition(Vector3.down * gravity, wheel.raySource.transform.position, ForceMode.Acceleration);
-                wheel.dustParticles.Stop();
             }
+        }
+
+        if (!grounded) landing = true;
+        if (grounded && !flipped && velocity.y < -15f && landing)
+        {
+            particlesController.land();
+            landing = !landing;
         }
 
         if (Physics.Raycast(transform.position, transform.up, out hit, 2.5f, layerMask))
