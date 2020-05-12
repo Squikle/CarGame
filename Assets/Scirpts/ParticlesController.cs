@@ -1,27 +1,17 @@
-﻿using Boo.Lang;
-using System.Collections;
-using System.Security.Cryptography;
-using UnityEditor.Presets;
-using UnityEngine;
-using UnityEngine.VFX;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(CarPhysic))]
 public class ParticlesController : MonoBehaviour
 {
     private CarPhysic carPhysic;
 
-    [SerializeField] private ParticleSystem smokeParticles;
-    private float defaulSmokeParticlesRate;
+    [SerializeField] private ParticleSystem smokeParticles=null;
 
-    [SerializeField] private ParticleSystem dustParticles;
+    [SerializeField] private ParticleSystem dustParticles=null;
 
     [SerializeField] [Range(0,30)] private float minSlipValue=15f;
 
-    void Start()
-    {
-        defaulSmokeParticlesRate = smokeParticles.emission.rateOverDistance.constant;
-        carPhysic = GetComponent<CarPhysic>();
-    }
+    void Start() => carPhysic = GetComponent<CarPhysic>();
 
     void Update()
     {
@@ -35,10 +25,7 @@ public class ParticlesController : MonoBehaviour
         foreach (GameObject emitter in wheel.emitters)
             if (emitter.gameObject.tag == particle.gameObject.tag)
             {
-                Debug.Log("Resume " + particle.name);
                 emitter.GetComponent<ParticleSystem>().Play();
-                var emission = emitter.GetComponent<ParticleSystem>().emission;
-                emission.rateOverDistance = defaulSmokeParticlesRate;
                 return;
             }
 
@@ -50,8 +37,6 @@ public class ParticlesController : MonoBehaviour
         foreach (GameObject emitter in wheel.emitters)
             if (emitter.gameObject.tag == particle.gameObject.tag)
             {
-                var emission = emitter.GetComponent<ParticleSystem>().emission;
-                emission.rateOverDistance = defaulSmokeParticlesRate;
                 emitter.GetComponent<ParticleSystem>().Play();
                 return;
             }
@@ -61,29 +46,19 @@ public class ParticlesController : MonoBehaviour
         wheel.emitters.Insert(0, newEmitter);
     }
 
-    public IEnumerator fadeParticles(ParticleSystem particle, WheelsClass wheel, int emmiterIndex)
-    {
-        ParticleSystem emitter = wheel.emitters[emmiterIndex].GetComponent<ParticleSystem>();
-        for (float j = defaulSmokeParticlesRate; j >= 1; j -= 0.1f) // куратина не останавливается и мешает возвращению рейта в норму в методе playParticle
-        {
-            var emission = emitter.emission;
-            emission.rateOverDistance = j;
-            Debug.Log("Pausing");
-            yield return null;
-        }
-        emitter.Stop();
-        if (!emitter.IsAlive())
-        {
-            Destroy(wheel.emitters[emmiterIndex]);
-            wheel.emitters.RemoveAt(emmiterIndex);
-        }
-    }
-
     void stopParticle(ParticleSystem particle, WheelsClass wheel)
     {
-        for (int i=0; i<wheel.emitters.Count; i++)
+        for (int i = 0; i < wheel.emitters.Count; i++)
             if (wheel.emitters[i].tag == particle.gameObject.tag)
-                StartCoroutine(fadeParticles(particle, wheel, i));
+            {
+                ParticleSystem emitter = wheel.emitters[i].GetComponent<ParticleSystem>();
+                emitter.Stop();
+                if (!emitter.IsAlive())
+                {
+                    Destroy(wheel.emitters[i]);
+                    wheel.emitters.RemoveAt(i);
+                }
+            }
     }
 
     public void driftSmokeManager()

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Runtime.CompilerServices;
-using TMPro;
 using UnityEngine;
 
 [RequireComponent(typeof(CarStats))]

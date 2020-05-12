@@ -1,7 +1,6 @@
-﻿using Boo.Lang;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.VFX;
 
 [System.Serializable]
 public class WheelsClass
