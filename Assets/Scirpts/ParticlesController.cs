@@ -35,9 +35,10 @@ public class ParticlesController : MonoBehaviour
         foreach (GameObject emitter in wheel.emitters)
             if (emitter.gameObject.tag == particle.gameObject.tag)
             {
+                Debug.Log("Resume " + particle.name);
+                emitter.GetComponent<ParticleSystem>().Play();
                 var emission = emitter.GetComponent<ParticleSystem>().emission;
                 emission.rateOverDistance = defaulSmokeParticlesRate;
-                emitter.GetComponent<ParticleSystem>().Play();
                 return;
             }
 
@@ -55,22 +56,22 @@ public class ParticlesController : MonoBehaviour
                 return;
             }
 
-            GameObject newEmitter = Instantiate(particle.gameObject, wheel.wheelModel.position, Quaternion.identity, wheel.wheelModel);
-            newEmitter.GetComponent<ParticleSystemRenderer>().material = particleMaterial;
-            wheel.emitters.Insert(0, newEmitter);
+        GameObject newEmitter = Instantiate(particle.gameObject, wheel.wheelModel.position, Quaternion.identity, wheel.wheelModel);
+        newEmitter.GetComponent<ParticleSystemRenderer>().material = particleMaterial;
+        wheel.emitters.Insert(0, newEmitter);
     }
 
     public IEnumerator fadeParticles(ParticleSystem particle, WheelsClass wheel, int emmiterIndex)
     {
         ParticleSystem emitter = wheel.emitters[emmiterIndex].GetComponent<ParticleSystem>();
-        for (float j = defaulSmokeParticlesRate; j >= 2; j -= 0.1f)
+        for (float j = defaulSmokeParticlesRate; j >= 1; j -= 0.1f) // куратина не останавливается и мешает возвращению рейта в норму в методе playParticle
         {
             var emission = emitter.emission;
             emission.rateOverDistance = j;
+            Debug.Log("Pausing");
             yield return null;
         }
         emitter.Stop();
-        yield return new WaitForSeconds(emitter.main.startLifetime.constantMax);
         if (!emitter.IsAlive())
         {
             Destroy(wheel.emitters[emmiterIndex]);
@@ -78,7 +79,7 @@ public class ParticlesController : MonoBehaviour
         }
     }
 
-    public void stopParticle(ParticleSystem particle, WheelsClass wheel)
+    void stopParticle(ParticleSystem particle, WheelsClass wheel)
     {
         for (int i=0; i<wheel.emitters.Count; i++)
             if (wheel.emitters[i].tag == particle.gameObject.tag)
@@ -125,7 +126,6 @@ public class ParticlesController : MonoBehaviour
                 }
             }
             stopParticle(dustParticles, wheel);
-            
         }
     }
 
