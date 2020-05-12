@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   jumpEffect: {fileID: 2277720633018723980, guid: 09d15114f181a824aac106421e107e2f,
     type: 3}
-  wheelRadius: 1
+  wheelRadius: 0.3
   maxSpeed: 60
   acceleration: 14000
   backAcceleration: 8000

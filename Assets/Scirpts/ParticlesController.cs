@@ -1,13 +1,27 @@
-﻿using UnityEngine;
+﻿using Boo.Lang;
+using System.Collections;
+using System.Security.Cryptography;
+using UnityEditor.Presets;
+using UnityEngine;
+using UnityEngine.VFX;
 
 [RequireComponent(typeof(CarPhysic))]
 public class ParticlesController : MonoBehaviour
 {
     private CarPhysic carPhysic;
 
+    [SerializeField] private ParticleSystem smokeParticles;
+    private float defaulSmokeParticlesRate;
+
+    [SerializeField] private ParticleSystem dustParticles;
+
     [SerializeField] [Range(0,30)] private float minSlipValue=15f;
 
-    void Start() => carPhysic = GetComponent<CarPhysic>();
+    void Start()
+    {
+        defaulSmokeParticlesRate = smokeParticles.emission.rateOverDistance.constant;
+        carPhysic = GetComponent<CarPhysic>();
+    }
 
     void Update()
     {
@@ -16,25 +30,84 @@ public class ParticlesController : MonoBehaviour
         dustManager();
     }
 
+    public void playParticle(ParticleSystem particle, WheelsClass wheel)
+    {
+        foreach (GameObject emitter in wheel.emitters)
+            if (emitter.gameObject.tag == particle.gameObject.tag)
+            {
+                var emission = emitter.GetComponent<ParticleSystem>().emission;
+                emission.rateOverDistance = defaulSmokeParticlesRate;
+                emitter.GetComponent<ParticleSystem>().Play();
+                return;
+            }
+
+        wheel.emitters.Insert(0, Instantiate(particle.gameObject, wheel.wheelModel.position, Quaternion.identity, wheel.wheelModel));
+    }
+
+    public void playParticle(ParticleSystem particle, WheelsClass wheel, Material particleMaterial)
+    {
+        foreach (GameObject emitter in wheel.emitters)
+            if (emitter.gameObject.tag == particle.gameObject.tag)
+            {
+                var emission = emitter.GetComponent<ParticleSystem>().emission;
+                emission.rateOverDistance = defaulSmokeParticlesRate;
+                emitter.GetComponent<ParticleSystem>().Play();
+                return;
+            }
+
+            GameObject newEmitter = Instantiate(particle.gameObject, wheel.wheelModel.position, Quaternion.identity, wheel.wheelModel);
+            newEmitter.GetComponent<ParticleSystemRenderer>().material = particleMaterial;
+            wheel.emitters.Insert(0, newEmitter);
+    }
+
+    public IEnumerator fadeParticles(ParticleSystem particle, WheelsClass wheel, int emmiterIndex)
+    {
+        ParticleSystem emitter = wheel.emitters[emmiterIndex].GetComponent<ParticleSystem>();
+        for (float j = defaulSmokeParticlesRate; j >= 2; j -= 0.1f)
+        {
+            var emission = emitter.emission;
+            emission.rateOverDistance = j;
+            yield return null;
+        }
+        emitter.Stop();
+        yield return new WaitForSeconds(emitter.main.startLifetime.constantMax);
+        if (!emitter.IsAlive())
+        {
+            Destroy(wheel.emitters[emmiterIndex]);
+            wheel.emitters.RemoveAt(emmiterIndex);
+        }
+    }
+
+    public void stopParticle(ParticleSystem particle, WheelsClass wheel)
+    {
+        for (int i=0; i<wheel.emitters.Count; i++)
+            if (wheel.emitters[i].tag == particle.gameObject.tag)
+                StartCoroutine(fadeParticles(particle, wheel, i));
+    }
+
     public void driftSmokeManager()
     {
         foreach (WheelsClass wheel in carPhysic.wheels)
         {
-            GroundStats groundStats;
-            if (groundStats = wheel?.surface?.GetComponent<GroundStats>())
+            if (wheel.wheel.tag == "BackWheels")
             {
-                if (Mathf.Abs(carPhysic.velocity.x) > minSlipValue
-                && groundStats.groundType == GroundType.Tough
-                && carPhysic.grounded
-                && !carPhysic.flipped)
+                GroundStats groundStats;
+                if (groundStats = wheel?.surface?.GetComponent<GroundStats>())
                 {
-                    wheel.smokeParticles.Play();
-                    continue;
+                    if (Mathf.Abs(carPhysic.velocity.x) > minSlipValue
+                    && groundStats.groundType == GroundType.Tough
+                    && carPhysic.grounded
+                    && !carPhysic.flipped)
+                    {
+                        playParticle(smokeParticles, wheel);
+                        continue;
+                    }
                 }
+                stopParticle(smokeParticles, wheel);
             }
-            wheel.smokeParticles.Stop();
         }
     }
+
     public void dustManager()
     {
         foreach (WheelsClass wheel in carPhysic.wheels)
@@ -46,12 +119,13 @@ public class ParticlesController : MonoBehaviour
                 && !carPhysic.flipped
                 && groundStats.groundType == GroundType.Dusty)
                 {
-                    wheel.dustParticles.GetComponent<ParticleSystemRenderer>().material = wheel?.surface.GetComponent<MeshRenderer>().material;
-                    wheel.dustParticles.Play();
+                    Material groundMaterial = wheel?.surface.GetComponent<MeshRenderer>().material;
+                    playParticle(dustParticles, wheel, groundMaterial);
                     continue;
                 }
             }
-            wheel.dustParticles.Stop();
+            stopParticle(dustParticles, wheel);
+            
         }
     }
 

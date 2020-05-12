@@ -9,8 +9,17 @@ public class FPSDisplay : MonoBehaviour
 
 	void Start()
 	{
-		//QualitySettings.vSyncCount = 0;
-		//Application.targetFrameRate = 60;
+#if UNITY_ANDROID || UNITY_IPHONE
+
+		Application.targetFrameRate = 60;
+
+		QualitySettings.vSyncCount = 0;
+
+		QualitySettings.antiAliasing = 0;
+
+		Screen.sleepTimeout = SleepTimeout.NeverSleep;
+
+#endif
 	}
 
 	void Update()

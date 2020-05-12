@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Boo.Lang;
+using System;
 using UnityEngine;
+using UnityEngine.VFX;
 
 [System.Serializable]
 public class WheelsClass
@@ -10,6 +12,5 @@ public class WheelsClass
 
     [NonSerialized] public GameObject surface;
 
-    public ParticleSystem dustParticles;
-    public ParticleSystem smokeParticles;
+    [NonSerialized] public List<GameObject> emitters = new List<GameObject>();
 }
