@@ -6,12 +6,13 @@ public class FPSDisplay : MonoBehaviour
 {
 	float deltaTime = 0.0f;
 
-
+	public int frameRate;
+		
 	void Start()
 	{
 #if UNITY_ANDROID || UNITY_IPHONE
 
-		Application.targetFrameRate = 60;
+		Application.targetFrameRate = frameRate;
 
 		QualitySettings.vSyncCount = 0;
 

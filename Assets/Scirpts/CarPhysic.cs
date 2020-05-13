@@ -1,9 +1,6 @@
 ﻿using System;
 using UnityEngine;
 
-[RequireComponent(typeof(CarStats))]
-[RequireComponent(typeof(ParticlesController))]
-[RequireComponent(typeof(CarControl))]
 public class CarPhysic : MonoBehaviour
 {
     public CarStats carStats;
@@ -89,7 +86,7 @@ public class CarPhysic : MonoBehaviour
             rb.drag = 0;
         else
     if (Mathf.Abs(verticalAxis) < 0.1f)
-            rb.drag = 1.5f;
+            rb.drag = 2.5f;
         else
             rb.drag = defaultDrag;
     }
@@ -113,8 +110,6 @@ public class CarPhysic : MonoBehaviour
         {
             if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, carStats.suspensionLenght, layerMask))
             {
-                wheel.surface = hit.collider.gameObject;
-
                 grounded = true;
                 flipped = false;
 

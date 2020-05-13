@@ -2,7 +2,6 @@
 using UnityEngine.SceneManagement;
 using UnityStandardAssets.CrossPlatformInput;
 
-[RequireComponent(typeof(CarPhysic))]
 public class CarControl : MonoBehaviour
 {
     private CarPhysic carPhysic;

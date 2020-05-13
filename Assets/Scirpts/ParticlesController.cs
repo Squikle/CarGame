@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 
 [RequireComponent(typeof(CarPhysic))]
 public class ParticlesController : MonoBehaviour
@@ -18,16 +19,19 @@ public class ParticlesController : MonoBehaviour
         surfaceCheck();
         driftSmokeManager();
         dustManager();
+        clearParticles();
     }
 
     public void playParticle(ParticleSystem particle, WheelsClass wheel)
     {
         foreach (GameObject emitter in wheel.emitters)
+        {
             if (emitter.gameObject.tag == particle.gameObject.tag)
             {
                 emitter.GetComponent<ParticleSystem>().Play();
                 return;
             }
+        }
 
         wheel.emitters.Insert(0, Instantiate(particle.gameObject, wheel.wheelModel.position, Quaternion.identity, wheel.wheelModel));
     }
@@ -37,13 +41,34 @@ public class ParticlesController : MonoBehaviour
         foreach (GameObject emitter in wheel.emitters)
             if (emitter.gameObject.tag == particle.gameObject.tag)
             {
-                emitter.GetComponent<ParticleSystem>().Play();
-                return;
+                if (wheel.newSurface) StartCoroutine(stopCoroutine(emitter.GetComponent<ParticleSystem>()));
+                else
+                {
+                    emitter.GetComponent<ParticleSystemRenderer>().material = particleMaterial;
+                    emitter.GetComponent<ParticleSystem>().Play();
+                    return;
+                }
             }
 
         GameObject newEmitter = Instantiate(particle.gameObject, wheel.wheelModel.position, Quaternion.identity, wheel.wheelModel);
         newEmitter.GetComponent<ParticleSystemRenderer>().material = particleMaterial;
         wheel.emitters.Insert(0, newEmitter);
+    }
+
+    void clearParticles()
+    {
+        foreach (WheelsClass wheel in carPhysic.wheels)
+        {
+            for (int i = 0; i < wheel.emitters.Count; i++)
+            {
+                ParticleSystem particles = wheel.emitters[i].GetComponent<ParticleSystem>();
+                if (!particles.IsAlive())
+                {
+                    Destroy(wheel.emitters[i]);
+                    wheel.emitters.RemoveAt(i);
+                }
+            }
+        }
     }
 
     void stopParticle(ParticleSystem particle, WheelsClass wheel)
@@ -52,13 +77,15 @@ public class ParticlesController : MonoBehaviour
             if (wheel.emitters[i].tag == particle.gameObject.tag)
             {
                 ParticleSystem emitter = wheel.emitters[i].GetComponent<ParticleSystem>();
-                emitter.Stop();
-                if (!emitter.IsAlive())
-                {
-                    Destroy(wheel.emitters[i]);
-                    wheel.emitters.RemoveAt(i);
-                }
+                StartCoroutine(stopCoroutine(emitter));
             }
+    }
+
+    IEnumerator stopCoroutine(ParticleSystem emitter)
+    {
+        yield return new WaitForSeconds(0.05f);
+        if (emitter)
+            emitter.Stop();
     }
 
     public void driftSmokeManager()
@@ -95,8 +122,7 @@ public class ParticlesController : MonoBehaviour
                 && !carPhysic.flipped
                 && groundStats.groundType == GroundType.Dusty)
                 {
-                    Material groundMaterial = wheel?.surface.GetComponent<MeshRenderer>().material;
-                    playParticle(dustParticles, wheel, groundMaterial);
+                    playParticle(dustParticles, wheel, wheel.surface.GetComponent<MeshRenderer>().material);
                     continue;
                 }
             }
@@ -112,14 +138,17 @@ public class ParticlesController : MonoBehaviour
         {
             if (Physics.Raycast(wheel.raySource.transform.position, -transform.up, out hit, carPhysic.carStats.suspensionLenght, carPhysic.layerMask))
             {
+                if (hit.collider.gameObject != wheel.surface)
+                    wheel.newSurface = true;
+                else
+                    wheel.newSurface = false;
+
                 wheel.surface = hit.collider.gameObject;
             }
         }
 
         if (Physics.Raycast(transform.position, -transform.up, out hit, 10f, carPhysic.layerMask))
-        {
             carPhysic.surface = hit.collider.gameObject;
-        }
     }
 
     public void land()

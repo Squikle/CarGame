@@ -9,7 +9,8 @@ public class WheelsClass
     public Transform wheelModel;
     public Transform raySource;
 
-    [NonSerialized] public GameObject surface;
+    public GameObject surface;
 
     [NonSerialized] public List<GameObject> emitters = new List<GameObject>();
+    [NonSerialized] public bool newSurface = true;
 }
