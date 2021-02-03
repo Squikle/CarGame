@@ -1,2 +1,2 @@
 # Race
- Wrrr.. My really first game project
+My really first game project
